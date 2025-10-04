@@ -4,6 +4,12 @@ const bcrypt = require('bcryptjs');
 const UserSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
+    collegeId: {
+        type: String,
+        required: [true, 'Please add a college ID'], // Added required validation
+        unique: true, // Ensures no two users can have the same college ID
+        trim: true,
+    },
     password: { type: String, required: true },
     phone: { type: String },
     year: { type: Number },
@@ -19,7 +25,7 @@ const UserSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Encrypt password before saving
-UserSchema.pre('save', async function(next) {
+UserSchema.pre('save', async function (next) {
     if (!this.isModified('password')) {
         return next();
     }
@@ -29,7 +35,7 @@ UserSchema.pre('save', async function(next) {
 });
 
 // Method to compare entered password with hashed password
-UserSchema.methods.matchPassword = async function(enteredPassword) {
+UserSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 

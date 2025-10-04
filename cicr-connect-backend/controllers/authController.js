@@ -1,14 +1,6 @@
 const User = require('../models/User');
 const InviteCode = require('../models/InviteCode');
-const jwt = require('jsonwebtoken');
-const { validationResult } = require('express-validator');
-
-// Generate JWT
-const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
-        expiresIn: '30d',
-    });
-};
+const generateToken = require('../utils/generateToken');
 
 /**
  * @desc    Register a new user using an invite code
@@ -16,49 +8,68 @@ const generateToken = (id) => {
  * @access  Public
  */
 const registerUser = async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+    // --- FIX: Added 'collegeId' to the destructuring ---
+    const { name, email, password, collegeId, inviteCode } = req.body;
+
+    // Basic validation
+    if (!name || !email || !password || !inviteCode || !collegeId) {
+        res.status(400);
+        throw new Error('Please enter all required fields');
     }
 
-    const { name, email, password, phone, year, branch, batch, inviteCode } = req.body;
-
     try {
-        // 1. Check if user already exists
-        let user = await User.findOne({ email });
-        if (user) {
-            return res.status(400).json({ message: 'User already exists' });
+        // 1. Check if user already exists by email OR collegeId
+        const userExists = await User.findOne({ $or: [{ email }, { collegeId }] });
+        if (userExists) {
+            let message = userExists.email === email
+                ? 'A user with this email already exists.'
+                : 'A user with this College ID already exists.';
+            res.status(400);
+            throw new Error(message);
         }
 
         // 2. Validate the invite code
         const code = await InviteCode.findOne({ code: inviteCode });
-        if (!code || code.isUsed || code.expiresAt < new Date()) {
-            return res.status(400).json({ message: 'Invalid or expired invitation code' });
+        if (!code || code.used || code.expiresAt < new Date()) {
+            res.status(400);
+            throw new Error('Invalid or expired invitation code');
         }
 
-        // 3. Create new user
-        user = new User({
-            name, email, password, phone, year, branch, batch
-            // Role defaults to 'Member' as per schema
+        // --- FIX: Pass 'collegeId' when creating the new user ---
+        const user = await User.create({
+            name,
+            email,
+            password,
+            collegeId, // This was the missing piece
         });
-        await user.save();
         
-        // 4. Mark invite code as used
-        code.isUsed = true;
-        await code.save();
+        if (user) {
+            // 4. Mark invite code as used
+            code.used = true;
+            await code.save();
 
-        // 5. Return user and token
-        res.status(201).json({
-            _id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            token: generateToken(user._id),
-        });
+            // 5. Return user and token
+            res.status(201).json({
+                _id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                token: generateToken(user._id),
+            });
+        } else {
+            res.status(400);
+            throw new Error('Invalid user data');
+        }
 
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        // This makes sure Mongoose validation errors are sent back nicely
+        if (err.name === 'ValidationError') {
+            const messages = Object.values(err.errors).map(val => val.message);
+            res.status(400).json({ message: messages[0] });
+        } else {
+            console.error(err.message);
+            res.status(500).json({ message: err.message || 'Server error' });
+        }
     }
 };
 
@@ -68,27 +79,10 @@ const registerUser = async (req, res) => {
  * @access  Public
  */
 const loginUser = async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-
     const { email, password } = req.body;
+    const user = await User.findOne({ email });
 
-    try {
-        // Check for user by email
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ message: 'Invalid credentials' });
-        }
-
-        // Check if password matches
-        const isMatch = await user.matchPassword(password);
-        if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid credentials' });
-        }
-
-        // Return user and token
+    if (user && (await user.matchPassword(password))) {
         res.json({
             _id: user.id,
             name: user.name,
@@ -96,25 +90,26 @@ const loginUser = async (req, res) => {
             role: user.role,
             token: generateToken(user._id),
         });
-
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+    } else {
+        res.status(401);
+        throw new Error('Invalid email or password');
     }
 };
 
 /**
- * @desc    Get logged in user's profile
+ * @desc    Get current user profile
  * @route   GET /api/auth/me
  * @access  Private
  */
 const getMe = async (req, res) => {
-    // req.user is attached from the auth middleware
-    res.status(200).json(req.user);
+    const user = await User.findById(req.user.id).select('-password');
+    res.status(200).json(user);
 };
+
 
 module.exports = {
     registerUser,
     loginUser,
     getMe,
 };
+
