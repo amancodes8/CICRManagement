@@ -3,9 +3,9 @@ const InviteCode = require('../models/InviteCode');
 const generateToken = require('../utils/generateToken');
 
 /**
- * @desc    Register a new user using an invite code
- * @route   POST /api/auth/register
- * @access  Public
+ * @desc   
+ * @route   
+ * @access  
  */
 const registerUser = async (req, res) => {
     // --- FIX: Added 'collegeId' to the destructuring ---
