@@ -6,8 +6,8 @@ const UserSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     collegeId: {
         type: String,
-        required: [true, 'Please add a college ID'], // Added required validation
-        unique: true, // Ensures no two users can have the same college ID
+        required: [true, 'Please add a college ID'],
+        unique: true,
         trim: true,
     },
     password: { type: String, required: true },
@@ -17,11 +17,20 @@ const UserSchema = new mongoose.Schema({
     batch: { type: String },
     role: {
         type: String,
-        enum: ['Admin', 'Head', 'Member', 'Alumni'],
-        default: 'Member'
+        enum: ['Admin', 'Head', 'User', 'Alumni'], // Changed 'Member' to 'User' for consistency
+        default: 'User'
     },
-    currentProject: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', default: null },
+    projects: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }], // Switched to array for multiple projects
     projectIdeas: [{ type: String }],
+    
+    // --- FIELDS FOR EMAIL VERIFICATION ---
+    isVerified: {
+        type: Boolean,
+        default: false,
+    },
+    verificationToken: String,
+    verificationTokenExpires: Date,
+
 }, { timestamps: true });
 
 // Encrypt password before saving
@@ -40,3 +49,4 @@ UserSchema.methods.matchPassword = async function (enteredPassword) {
 };
 
 module.exports = mongoose.model('User', UserSchema);
+

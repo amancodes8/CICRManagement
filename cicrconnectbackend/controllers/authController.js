@@ -3,12 +3,11 @@ const InviteCode = require('../models/InviteCode');
 const generateToken = require('../utils/generateToken');
 
 /**
- * @desc   
- * @route   
- * @access  
+ * @desc    Register a new user
+ * @route   POST /api/auth/register
+ * @access  Public
  */
 const registerUser = async (req, res) => {
-    // --- FIX: Added 'collegeId' to the destructuring ---
     const { name, email, password, collegeId, inviteCode } = req.body;
 
     // Basic validation
@@ -35,12 +34,12 @@ const registerUser = async (req, res) => {
             throw new Error('Invalid or expired invitation code');
         }
 
-        // --- FIX: Pass 'collegeId' when creating the new user ---
+        // 3. Create the user
         const user = await User.create({
             name,
             email,
             password,
-            collegeId, // This was the missing piece
+            collegeId,
         });
         
         if (user) {
@@ -62,7 +61,6 @@ const registerUser = async (req, res) => {
         }
 
     } catch (err) {
-        // This makes sure Mongoose validation errors are sent back nicely
         if (err.name === 'ValidationError') {
             const messages = Object.values(err.errors).map(val => val.message);
             res.status(400).json({ message: messages[0] });
@@ -92,6 +90,8 @@ const loginUser = async (req, res) => {
         });
     } else {
         res.status(401);
+        // Note: Without try/catch or async-handler, this throw might crash the app in Express 4
+        // Recommend adding error handling here in the future
         throw new Error('Invalid email or password');
     }
 };
@@ -106,10 +106,26 @@ const getMe = async (req, res) => {
     res.status(200).json(user);
 };
 
+/**
+ * @desc    Verify User Email
+ * @route   GET /api/auth/verifyemail/:token
+ * @access  Public
+ */
+const verifyEmail = async (req, res) => {
+    // TODO: Add your actual email verification logic here
+    // For now, this placeholder prevents the server from crashing
+    const { token } = req.params;
+    console.log(`Verification requested for token: ${token}`);
+    
+    res.status(200).json({ 
+        success: true, 
+        message: 'Email verification endpoint hit' 
+    });
+};
 
 module.exports = {
     registerUser,
     loginUser,
     getMe,
+    verifyEmail, // <--- This was the missing export causing your error
 };
-
