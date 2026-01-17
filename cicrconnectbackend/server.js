@@ -16,7 +16,7 @@ const app = express();
    Allows frontend (Vite) to communicate with Backend
 ================================================== */
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
+    res.header('Access-Control-Allow-Origin', 'https://frontend-cicr25.vercel.app');
     res.header(
         'Access-Control-Allow-Headers',
         'Origin, X-Requested-With, Content-Type, Accept, Authorization'
