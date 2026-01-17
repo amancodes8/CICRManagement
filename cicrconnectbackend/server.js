@@ -11,10 +11,7 @@ connectDB();
 
 const app = express();
 
-/* ==================================================
-   1. CORS CONFIGURATION
-   Allows frontend (Vite) to communicate with Backend
-================================================== */
+
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', 'https://frontend-cicr25.vercel.app');
     res.header(
@@ -35,23 +32,16 @@ app.use((req, res, next) => {
 
 app.use(cors());
 
-/* ==================================================
-   2. BODY PARSERS
-================================================== */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-/* ==================================================
-   3. HEALTH CHECK
-================================================== */
+
+
 app.get('/', (req, res) => {
     res.send('CICR Connect API is running...');
 });
 
-/* ==================================================
-   4. API ROUTES
-   Ensure these files exist in your /routes folder
-================================================== */
+
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/projects', require('./routes/projectRoutes'));
@@ -61,9 +51,6 @@ app.use('/api/chatbot', require('./routes/chatbotRoutes'));
 app.use('/api/inventory', require('./routes/inventoryRoutes')); 
 app.use('/api/community', require('./routes/postRoutes'));
 
-/* ==================================================
-   5. GLOBAL ERROR HANDLER
-================================================== */
 app.use((err, req, res, next) => {
     const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
     res.status(statusCode).json({
