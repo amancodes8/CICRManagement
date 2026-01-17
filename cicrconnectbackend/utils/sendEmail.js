@@ -1,26 +1,42 @@
 const nodemailer = require('nodemailer');
 
+/**
+ * @desc Utility to send emails via Nodemailer
+ * @param {Object} options - { email, subject, message }
+ */
 const sendEmail = async (options) => {
-    // 1. Create a transporter
-    const transporter = nodemailer.createTransport({
-        host: process.env.MAIL_HOST,
-        port: process.env.MAIL_PORT,
-        auth: {
-            user: process.env.MAIL_USER,
-            pass: process.env.MAIL_PASS,
-        },
-    });
+  // 1. Ensure env variables exist
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.error("CRITICAL: EMAIL_USER or EMAIL_PASS not set in .env");
+    throw new Error("SMTP credentials missing");
+  }
 
-    // 2. Define the email options
-    const mailOptions = {
-        from: 'CICR Connect <admin@cicr.com>',
-        to: options.email,
-        subject: options.subject,
-        html: options.html,
-    };
+  // 2. Create Transporter
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS, // Use Google App Password here
+    },
+  });
 
-    // 3. Actually send the email
-    await transporter.sendMail(mailOptions);
+  // 3. Define Mail Options
+  const mailOptions = {
+    from: `"CICR Connect" <${process.env.EMAIL_USER}>`,
+    to: options.email,
+    subject: options.subject,
+    html: options.message, // Accepts HTML strings
+  };
+
+  // 4. Send the Email
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("✅ Email sent: %s", info.messageId);
+    return info;
+  } catch (error) {
+    console.error("❌ Nodemailer Error:", error.message);
+    throw error;
+  }
 };
 
 module.exports = sendEmail;

@@ -1,19 +1,27 @@
 const express = require('express');
 const router = express.Router();
-const { generateInviteCode, getAllUsers, deleteUser, updateUserByAdmin } = require('../controllers/adminController');
+const { 
+    generateInviteCode, 
+    sendInviteEmail, // Ensure this matches the controller export
+    getAllUsers, 
+    deleteUser, 
+    updateUserByAdmin 
+} = require('../controllers/adminController');
+
 const { protect } = require('../middleware/authMiddleware');
 const { authorize } = require('../middleware/roleMiddleware');
 
-// All routes in this file are protected and for Admins only
-router.use(protect, authorize('Admin'));
+// Security: Applied to all routes below
+router.use(protect, authorize('Admin', 'Head'));
 
-// Generate invite code
+/* --- Invitation Routes --- */
 router.post('/invite', generateInviteCode);
 
-// Get all users, update a user, delete a user
-router.route('/users')
-    .get(getAllUsers);
-    
+// This creates: POST http://localhost:4000/api/admin/send-invite
+router.post('/send-invite', sendInviteEmail); 
+
+/* --- User Management --- */
+router.get('/users', getAllUsers);
 router.route('/users/:id')
     .put(updateUserByAdmin)
     .delete(deleteUser);

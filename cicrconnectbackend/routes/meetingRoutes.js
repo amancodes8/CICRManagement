@@ -1,11 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { scheduleMeeting, getAllMeetings } = require('../controllers/meetingController');
+const { scheduleMeeting, getMeetings } = require('../controllers/meetingController');
 const { protect } = require('../middleware/authMiddleware');
-const { authorize } = require('../middleware/roleMiddleware');
 
-router.route('/')
-    .get(protect, getAllMeetings)
-    .post(protect, authorize('Admin', 'Head'), scheduleMeeting);
+// Standard REST path: POST /api/meetings
+router.post('/', protect, scheduleMeeting);
+router.get('/', protect, getMeetings);
 
 module.exports = router;

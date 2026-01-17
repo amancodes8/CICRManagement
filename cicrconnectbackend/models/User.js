@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto'); // Built-in Node module for token generation
 
 const UserSchema = new mongoose.Schema({
     name: { type: String, required: true },
@@ -17,16 +18,16 @@ const UserSchema = new mongoose.Schema({
     batch: { type: String },
     role: {
         type: String,
-        enum: ['Admin', 'Head', 'User', 'Alumni'], // Changed 'Member' to 'User' for consistency
+        enum: ['Admin', 'Head', 'User', 'Alumni'], 
         default: 'User'
     },
-    projects: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }], // Switched to array for multiple projects
+    projects: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }], 
     projectIdeas: [{ type: String }],
     
-    // --- FIELDS FOR EMAIL VERIFICATION ---
+    // --- FIELDS FOR MANDATORY EMAIL VERIFICATION ---
     isVerified: {
         type: Boolean,
-        default: false,
+        default: false, // User cannot login until this is true
     },
     verificationToken: String,
     verificationTokenExpires: Date,
@@ -48,5 +49,21 @@ UserSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
-module.exports = mongoose.model('User', UserSchema);
+// --- NEW METHOD: GENERATE VERIFICATION TOKEN ---
+UserSchema.methods.createVerificationToken = function() {
+    // Generate a random 32-character hex string
+    const token = crypto.randomBytes(20).toString('hex');
 
+    // Hash the token to save it in the database (security best practice)
+    this.verificationToken = crypto
+        .createHash('sha256')
+        .update(token)
+        .digest('hex');
+
+    // Token expires in 24 hours
+    this.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
+
+    return token; // Return the unhashed token to send via email
+};
+
+module.exports = mongoose.model('User', UserSchema);

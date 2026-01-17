@@ -15,7 +15,6 @@ const InviteCodeSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
-    // Set code to expire in 7 days by default
     expiresAt: {
         type: Date,
         default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 

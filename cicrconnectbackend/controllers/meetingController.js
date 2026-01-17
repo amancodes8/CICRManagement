@@ -3,56 +3,60 @@ const Meeting = require('../models/Meeting');
 /**
  * @desc    Schedule a new meeting
  * @route   POST /api/meetings
- * @access  Private (Heads, Admins)
+ * @access  Private
  */
-const scheduleMeeting = async (req, res) => {
-    const { title, meetingType, details, startTime, endTime, participants } = req.body;
-
+exports.scheduleMeeting = async (req, res) => {
     try {
-        const meeting = new Meeting({
+        const { title, meetingType, details, startTime, endTime, participants } = req.body;
+
+        // 1. Double check required fields match your Schema
+        if (!title || !meetingType || !details?.topic || !details?.location || !startTime || !endTime) {
+            return res.status(400).json({ message: "Please provide all required fields." });
+        }
+
+        // 2. Create meeting using 'organizedBy' (matching your Schema)
+        const newMeeting = new Meeting({
             title,
             meetingType,
-            details,
+            details, // This contains topic, location, and optionally agenda
             startTime,
             endTime,
             participants,
-            organizedBy: req.user.id
+            organizedBy: req.user.id // Taken from the 'protect' middleware
         });
 
-        const createdMeeting = await meeting.save();
+        // 3. Save to MongoDB
+        const savedMeeting = await newMeeting.save();
+        
+        // 4. Populate for the response
+        const populatedMeeting = await Meeting.findById(savedMeeting._id)
+            .populate('organizedBy', 'name role')
+            .populate('participants', 'name branch');
 
-        // TODO: Integrate notification service (Email/WhatsApp) here
-
-        res.status(201).json(createdMeeting);
+        res.status(201).json(populatedMeeting);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        console.error("Meeting Save Error:", err.message);
+        res.status(500).json({ message: "Server error: " + err.message });
     }
 };
 
 /**
- * @desc    Get all meetings
+ * @desc    Get all meetings for the user
  * @route   GET /api/meetings
- * @access  Private
  */
-const getAllMeetings = async (req, res) => {
+exports.getMeetings = async (req, res) => {
     try {
-        // Find meetings where the logged-in user is a participant or organizer
         const meetings = await Meeting.find({
             $or: [
-                { participants: req.user.id },
-                { organizedBy: req.user.id }
+                { organizedBy: req.user.id },
+                { participants: req.user.id }
             ]
-        }).populate('organizedBy', 'name').populate('participants', 'name email');
-        
-        res.json(meetings);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
-    }
-};
+        })
+        .populate('organizedBy', 'name')
+        .sort({ startTime: 1 });
 
-module.exports = {
-    scheduleMeeting,
-    getAllMeetings,
+        res.status(200).json(meetings);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
 };
